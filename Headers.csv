@@ -1,0 +1,26 @@
+Header,Title
+portfolio_name,Portfolio Name
+sedol,Sedol
+invariant_id,Invariant ID
+sec_desc,Security Name
+market,Market
+currency,Currency
+country,Country
+sector,Sector
+subsector,Subsector
+industry,Industry
+subindustry,Subindustry
+quote_type,Measure
+quote_value,Measure Value
+currency,Currency
+BT,Bloomberg Ticker
+measure_code,Measure
+measure_value,Measure Value
+period_end_dt,Period End
+measure_desc,Measure
+frequency,Frequency
+effective_dt,Effective Date
+number_of_ests,Number of Estimates
+mean,Mean
+median,Median
+standard_deviation,Standard Deviation
