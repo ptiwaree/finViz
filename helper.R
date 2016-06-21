@@ -6,6 +6,7 @@ library(quantmod)
 #library(plyr)
 library(ggplot2)
 
+#install.packages(c("tidyr","dplyr","shiny","quantmod","ggplot2")
 # Read files
 rm(list = ls())
 setwd("X:")
@@ -21,6 +22,7 @@ worldscope$sedol = as.character(worldscope$sedol)
 sec_info = read.csv(file="sec_info.csv",header=TRUE,stringsAsFactors=FALSE)
 head(sec_info)
 
+# Stock Screener
 # Merge Dataframes and other clean up
 DATA <- merge(worldscope,sec_info,by.x = "invariant_id",by.y = "invariant_id",all.x=TRUE)
 #filter(DATA,sedol.x != sedol.y)
@@ -32,56 +34,19 @@ DATA = merge(DATA,PB,by.x = "invariant_id",by.y = "INVARIANT_ID",all.x=TRUE)
 DATA <- spread(DATA,measure_code,measure_value)
 #View(DATA %>% filter(invariant_id == "Z913Y11C0"))
 
-testing = function(){
-  # Test using grid.arrange
-  #df <- data.frame(x=1:10, y=rnorm(10))
-  p1 <- ggplot(DATA, aes(pe_fy0,pb_fy0)) + geom_point()
-  p2 <- ggplot(DATA, aes(BPS_ACT_EST_BASIS,pb_fy0)) + geom_point()
-  library(gridExtra)
-  plist <- list(p1,p2)
-  n <- length(plist)
-  nCol <- floor(sqrt(n))
-  do.call("grid.arrange", c(plist, ncol=nCol))
-  
-  # plotly
-  
-  y1 = "pe_fy0" #Example y1 = "pe_fy0"
-  y2 = "pb_fy0"
-  x = DATA[[y1]]
-  y = DATA[[y2]]
-  p <- ggplot(DATA, aes(x,y)) + geom_point()
-  (gg <- ggplotly(p))
-  gg
-  ggplotly(p)
-  
-  set.seed(100)
-  d <- diamonds[sample(nrow(diamonds), 1000), ]
-  p <- ggplot(data = d, aes(x = carat, y = price)) +
-    geom_point(aes(text = paste("Clarity:", clarity)), size = 4) +
-    geom_smooth(aes(colour = cut, fill = cut)) + facet_wrap(~ cut)
-  
-  (gg <- ggplotly(p))
-  gg
-  p
-  d <- diamonds[sample(nrow(diamonds), 500), ]
-  plot_ly(d, x = carat, y = price, text = paste("Clarity: ", clarity),
-          mode = "markers", color = carat, size = carat)
-  set.seed(1234)
-  dat <- data.frame(cond = factor(rep(c("A","B"), each=200)), rating = c(rnorm(200),rnorm(200, mean=.8)))
-  ggplot(dat, aes(x=cond, y=rating)) + geom_boxplot()
-  
-  # heat map Test
-  library(d3heatmap)
-  url <- "http://datasets.flowingdata.com/ppg2008.csv"
-  nba_players <- read.csv(url, row.names = 1)
-  d3heatmap(nba_players, scale = "column")
-  
-  #summary
-  tmp <- do.call(data.frame, 
-                 list(mean = apply(DATA, 2, mean),
-                      sd = apply(DATA, 2, sd,na.rm = TRUE),
-                      median = apply(DATA, 2, median,na.rm = TRUE),
-                      min = apply(DATA, 2, min,na.rm = TRUE),
-                      max = apply(DATA, 2, max,na.rm = TRUE),
-                      n = apply(DATA, 2, length,na.rm = TRUE)))
-}
+# Company Analyzer 
+setwd("U:")
+fermi_market_data = read.csv(file="fermi_market_data.csv",header=TRUE,stringsAsFactors=FALSE)
+time_series_data = merge(DATA[,c("invariant_id", "BT", "sec_desc")],fermi_market_data, by.x = "invariant_id", by.y = "invariant_id",all.x=TRUE)
+setwd("H:/My Documents/R/stockSelector")
+save(list = ls(all = TRUE), file= "all.RData")
+time_series_data$new_date = gsub("12:00AM","",time_series_data$date)
+time_series_data$new_date = gsub("^\\s+|\\s+$", "", time_series_data$new_date) #strip white spaces
+time_series_data$new_date = as.Date(time_series_data$new_date,"%B %d %Y")
+save(list = ls(all = TRUE), file= "all.RData")
+
+# Load data
+local({
+  load("all.RData")
+  ls()
+})

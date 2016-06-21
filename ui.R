@@ -1,10 +1,13 @@
 library(shiny)
+library(plotly)
+library(dygraphs)
+
 
 shinyUI(navbarPage("Applications:", id="eqapps", 
   tabPanel("Equity Screener",
   sidebarLayout(
     sidebarPanel(
-      #h3("Screening Option"),
+      h3("Screening Criteria"),
       selectInput("Indicator",label="Categorical Variables",
                   choices=IndicatorDropDown, selected="INDEX", multiple=TRUE,selectize=FALSE),
       selectInput("Numerical",label="Numerical Variables",
@@ -54,51 +57,67 @@ shinyUI(navbarPage("Applications:", id="eqapps",
     
     mainPanel(
       tabsetPanel(
-          tabPanel("Table", 
+          tabPanel("Tables", 
                    fluidRow(
-                     column(12, # - Table Variables To Output
-                            selectizeInput("OutputTableVars",label="",
-                                        choices=c(IndicatorDropDown,NumericalDropDown), multiple=TRUE, options = list(placeholder = 'Choose variables to output in the table'), selected=c("BLOOMBERG TICKER","SEDOL","SECURITY NAME"))),
-                     column(12, dataTableOutput('table'))
+                     column(12, radioButtons("tables", "", choices=c("Raw Data", "Summary"), selected = "Raw Data", inline = TRUE, width = '100%')),
+                     conditionalPanel(
+                       condition = 'input.tables.indexOf("Raw Data") !== -1 || input.tables.indexOf("Summary") !== -1',
+                       column(12, # - Table Variables To Output
+                              selectizeInput("OutputTableVars",label="",
+                                             choices=c(IndicatorDropDown,NumericalDropDown), multiple=TRUE, options = list(placeholder = 'Choose variables to output in the table'), selected=c("BLOOMBERG TICKER","SEDOL","SECURITY NAME","P/E (FY0)")))
+                       ),
+                     conditionalPanel(
+                       condition = 'input.tables.indexOf("Raw Data") !== -1',
+                        column(12, DT::dataTableOutput('table'))
+                     ),
+                     conditionalPanel(
+                       condition = 'input.tables.indexOf("Summary") !== -1',
+                       column(12, DT::dataTableOutput('summary'))
+                     )
                      )),
-          tabPanel("Summary",
+          tabPanel("Charts", 
                    fluidRow(
-                     column(12, # - Table Variables To Output
-                            selectizeInput("OutputStatsVars",label="",
-                                           choices=c(NumericalDropDown), multiple=TRUE, options = list(placeholder = 'Choose variables to output in the table'), selected=c("STATISTICS","P/E (FY0)"))),
-                     column(12, dataTableOutput('summary'))
-                     )),
-          tabPanel("Histograms", 
-                   fluidRow(
-                      column(12, selectizeInput("DensityVars",label="",
-                                            choices=NumericalDropDown, selected=NumericalDropDown[1],multiple=TRUE, options = list(placeholder = 'Choose variables to plot density'))),
-                      column(12,plotOutput('density'))
-                    )),
-          tabPanel("Scatter Plot", 
-                   fluidRow(
-                     column(6, selectizeInput("ScatterVarsX",label="",
-                                              choices=NumericalDropDown, selected=NumericalDropDown[1], multiple=FALSE, options = list(placeholder = 'Choose X variable'))),
-                     column(6, selectizeInput("ScatterVarsY",label="",
-                                              choices=NumericalDropDown, selected=NumericalDropDown[2], multiple=FALSE, options = list(placeholder = 'Choose Y variable'))),
-                     column(12, plotOutput('scatter'))
-                   )),#end of scatter tabPanel
-        tabPanel("Box Plots", 
-                 fluidRow(
-                   column(12, selectizeInput("BoxVars",label="",
-                                             choices=NumericalDropDown, selected=NumericalDropDown[1],multiple=TRUE, options = list(placeholder = 'Choose variables for box plots'))),
-                   column(12,plotOutput('box'))
-                 )) #end of box tabpanel
+                      column(12, radioButtons("plots", "", choices=c("Histogram", "Density", "Scatter", "Box"), selected = "Histogram", inline = TRUE, width = '100%')),
+                      conditionalPanel(
+                        condition = 'input.plots.indexOf("Histogram") !== -1 || input.plots.indexOf("Density") !== -1 || input.plots.indexOf("Box") !== -1',
+                        column(12, uiOutput("hist_vars_selector"))
+                      ),
+                      column(6, numericInput("MAD", "Median Abs. Deviation", 3, min = 0, max = 20, step = 1, width = '25%')),
+                      conditionalPanel(
+                        condition = 'input.plots.indexOf("Histogram") !== -1',
+                        column(12, uiOutput("histograms"))
+                      ),
+                      conditionalPanel(
+                        condition = 'input.plots.indexOf("Density") !== -1',
+                        column(12, uiOutput("densities"))
+                      ),
+                      conditionalPanel(
+                        condition = 'input.plots.indexOf("Box") !== -1',
+                        column(12, uiOutput("boxes"))
+                      ),
+                      conditionalPanel(
+                        condition = 'input.plots.indexOf("Scatter") !== -1',
+                          column(6, selectizeInput("ScatterVarsX",label="X",
+                                                   choices=NumericalDropDown, selected=NumericalDropDown[1], multiple=FALSE, options = list(placeholder = 'Choose X variable'))),
+                          column(6, selectizeInput("ScatterVarsY",label="Y",
+                                                   choices=NumericalDropDown, selected=NumericalDropDown[2], multiple=FALSE, options = list(placeholder = 'Choose Y variable'))),
+                          column(12, plotlyOutput('scatter'))
+                      )
+                    ))
         )) #end of main panel and tab panel
   ) #end of sidebarLayout
 ), #end of Equity Screener tabPanel
-tabPanel("Company Analyzer",
-   sidebarLayout(
-     sidebarPanel(
-       #options = list(maxItems = 5)
-       selectizeInput("Ticker",label="TICKERS",
-                   choices=unique(DATA$BT),multiple=TRUE,  options = list(maxItems = 5, placeholder = 'Enter Upto 5 Tickers'))       
+tabPanel("Peer Analyzer",
+     sidebarLayout(
+       sidebarPanel(
+        selectizeInput("pa_ticker",label="TICKERS",
+                      choices=unique(time_series_data$BT),multiple=TRUE,  selected="BLK US", options = list(maxItems = 5, placeholder = 'Enter Upto 5 Tickers')),
+        selectizeInput("pa_quote_type",label="QUOTE TYPE",
+                      choices= unique(time_series_data$quote_type[!is.na(time_series_data$quote_type)]),multiple=FALSE, width = '25%')
        ),
-     mainPanel()
-   )
-   )
-))
+       mainPanel(
+         dygraphOutput("ca_dygraph")
+       )
+     ) #end of sidebarLayout
+   ) #end of tabPanel
+)) #end of Shiny UI
