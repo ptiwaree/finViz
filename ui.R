@@ -77,12 +77,15 @@ shinyUI(navbarPage("Applications:", id="eqapps",
                      )),
           tabPanel("Charts", 
                    fluidRow(
-                      column(12, radioButtons("plots", "", choices=c("Histogram", "Density", "Scatter", "Box"), selected = "Histogram", inline = TRUE, width = '100%')),
+                      column(12, radioButtons("plots", "", choices=c("Histogram", "Bar", "Density", "Scatter", "Box"), selected = "Histogram", inline = TRUE, width = '100%')),
                       conditionalPanel(
                         condition = 'input.plots.indexOf("Histogram") !== -1 || input.plots.indexOf("Density") !== -1 || input.plots.indexOf("Box") !== -1',
                         column(12, uiOutput("hist_vars_selector"))
                       ),
-                      column(6, numericInput("MAD", "Median Abs. Deviation", 3, min = 0, max = 20, step = 1, width = '25%')),
+                      conditionalPanel(
+                        condition = 'input.plots !== "Bar"',
+                        column(6, numericInput("MAD", "Median Abs. Deviation", 3, min = 0, max = 20, step = 1, width = '25%'))
+                      ),
                       conditionalPanel(
                         condition = 'input.plots.indexOf("Histogram") !== -1',
                         column(12, uiOutput("histograms"))
@@ -94,6 +97,11 @@ shinyUI(navbarPage("Applications:", id="eqapps",
                       conditionalPanel(
                         condition = 'input.plots.indexOf("Box") !== -1',
                         column(12, uiOutput("boxes"))
+                      ),
+                      conditionalPanel(
+                        condition = 'input.plots.indexOf("Bar") !== -1',
+                        column(12, uiOutput("bar_vars_selector")),
+                        column(12, uiOutput("bars"))
                       ),
                       conditionalPanel(
                         condition = 'input.plots.indexOf("Scatter") !== -1',
@@ -116,7 +124,7 @@ tabPanel("Peer Analyzer",
                       choices= unique(time_series_data$quote_type[!is.na(time_series_data$quote_type)]),multiple=FALSE, width = '25%')
        ),
        mainPanel(
-         dygraphOutput("ca_dygraph")
+         dygraphOutput("pa_dygraph")
        )
      ) #end of sidebarLayout
    ) #end of tabPanel

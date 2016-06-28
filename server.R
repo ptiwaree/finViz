@@ -1,13 +1,4 @@
-library(gridExtra)
-library(plotly)
-#library(d3heatmap)
-library(pastecs) #used for summary statistics
-library(DT)
-library(dygraphs)
-library(xts)
 #library(datasets)
-
-#install.packages(c("plotly","pastecs","DT"))
 
 options(scipen = 999)
 ##############################################Functions########################################
@@ -195,6 +186,43 @@ shinyServer(function(input, output) {
       })
     }) #end of lapply
   }) #end of boxPlots reactive
+  
+  output$bar_vars_selector <- renderUI({  
+    selectizeInput("BarVars",label="Variables", choices=c("MARKET","CURRENCY","COUNTRY","SECTOR","SUBSECTOR","INDUSTRY","SUBINDUSTRY"), selected="SECTOR", multiple=TRUE, options = list(placeholder = 'Choose variables to plot'))
+  })
+  
+  output$bars <- renderUI({
+    progress <- shiny::Progress$new()
+    on.exit(progress$close())
+    progress$set(message = "Making Bar Chart", value = 0)
+    
+    barPlots()
+    plot_output_list <- lapply(1:length(input$BarVars), function(x) {
+      plotname <- paste("bar", x, sep="")
+      #plotOutput(plotname, height = 280, width = 1000)
+      highchartOutput(plotname)
+    })
+    do.call(tagList, plot_output_list)
+  })
+  
+  barPlots <- reactive({
+    progress <- shiny::Progress$new()
+    on.exit(progress$close())
+    progress$set(message = "Making Bar Chart", value = 0)
+    
+    lapply(1:length(input$BarVars), function(i) {
+      progress$inc(i/length(input$BarVars))
+      plotname <- paste("bar", i, sep="")
+      output[[plotname]] <- renderHighchart({
+        x = input$BarVars[i] #x = "P/E (FY0)"
+        y = headers$V1[[which(headers$V2 == x)]] #Example y = "pe_fy0"
+        color_index = ifelse(i%%length(colors)==0,length(colors),i%%length(colors))
+        data_to_plot = outputdata()[[y]]
+        #fill=sample(colors,1), 
+        hchart(data_to_plot, colorByPoint = TRUE, name = paste0("Bar Chart: ", x))
+      })
+    }) #end of lapply
+  }) #end of histPlots reactive
 
 ################################OUTPUT DATA###################
   # - Output data
@@ -289,7 +317,7 @@ shinyServer(function(input, output) {
   })
   
   # - Peer Analyzer - Make a time series data
-  comp_analyzer_output_data = reactive({
+  peer_analyzer_output_data = reactive({
     temp = time_series_data %>% filter(BT %in% input$pa_ticker & quote_type == input$pa_quote_type)
     temp = temp %>% select(new_date, BT, quote_value)
     temp <- spread(temp,BT,quote_value)
@@ -303,8 +331,8 @@ shinyServer(function(input, output) {
   output$summary <- DT::renderDataTable(round_df(summaryStats(),3),  class = 'cell-border stripe')
   output$scatter <- renderPlotly(scatterPlot())
   
-  output$ca_dygraph <- renderDygraph({
-    dygraph(comp_analyzer_output_data(), main = paste0("Time Series: ",input$pa_quote_type)) %>%
+  output$pa_dygraph <- renderDygraph({
+    dygraph(peer_analyzer_output_data(), main = paste0("Time Series: ",input$pa_quote_type)) %>%
       dyOptions(drawGrid = TRUE, stackedGraph = TRUE) %>%
       dyRangeSelector(height = 20)
   })
