@@ -1,2 +1,2 @@
 # finViz
-Data Visualizations for Equities and beyond
+Data Visualizations for Equities using R Shiny
