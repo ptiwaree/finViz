@@ -1,3 +1,6 @@
+# Purely a helper script for reading files, editing/saving data for the script.
+# Ideally, you would execute this once to create R dataframes 
+
 # Load libraries
 library(tidyr)
 library(dplyr)
@@ -6,7 +9,6 @@ library(quantmod)
 #library(plyr)
 library(ggplot2)
 
-#install.packages(c("tidyr","dplyr","shiny","quantmod","ggplot2")
 # Read files
 rm(list = ls())
 setwd("X:")
@@ -34,19 +36,15 @@ DATA = merge(DATA,PB,by.x = "invariant_id",by.y = "INVARIANT_ID",all.x=TRUE)
 DATA <- spread(DATA,measure_code,measure_value)
 #View(DATA %>% filter(invariant_id == "Z913Y11C0"))
 
-# Company Analyzer 
+# Peer Analyzer 
 setwd("U:")
 fermi_market_data = read.csv(file="fermi_market_data.csv",header=TRUE,stringsAsFactors=FALSE)
 time_series_data = merge(DATA[,c("invariant_id", "BT", "sec_desc")],fermi_market_data, by.x = "invariant_id", by.y = "invariant_id",all.x=TRUE)
+
+# Save data
 setwd("H:/My Documents/R/stockSelector")
 save(list = ls(all = TRUE), file= "all.RData")
 time_series_data$new_date = gsub("12:00AM","",time_series_data$date)
 time_series_data$new_date = gsub("^\\s+|\\s+$", "", time_series_data$new_date) #strip white spaces
 time_series_data$new_date = as.Date(time_series_data$new_date,"%B %d %Y")
 save(list = ls(all = TRUE), file= "all.RData")
-
-# Load data
-local({
-  load("all.RData")
-  ls()
-})

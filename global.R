@@ -1,4 +1,42 @@
+# This script contains global variables and functions that server.R uses
+
+library(gridExtra)
+library(plotly)
+#library(pastecs) #used for summary statistics
+library(DT)
+library(dygraphs)
+library(xts)
+library(tidyr)
+library(dplyr)
+library(shiny)
+library(quantmod)
+library(ggplot2)
+library(highcharter)
+
+# Global Functions
+get_min = function(measure) {
+  return(min(measure,na.rm = TRUE))
+}
+
+get_max = function(measure) {
+  return(max(measure,na.rm = TRUE))
+}
+
+# rounds numerical columns in a dataframe
+round_df <- function(df, digits) {
+  nums <- vapply(df, is.numeric, FUN.VALUE = logical(1))
+  df[,nums] <- round(df[,nums], digits = digits)
+  return(df)
+}
+
+# Load data
+setwd("H:/My Documents/R/stockSelector")
+load("all.RData")
+
 # Variables that can be accessed by server and UI automatically
+# Round the data to 2 decimal places
+DATA = round_df(DATA,2)
+DATA = DATA %>% select(-period_end)
 
 # - Create Global variables
 
@@ -21,12 +59,3 @@ NumericalDropDown = lapply(NumericalDropDown, function(x) return(headers2[[x]]))
 colors <- c("#009A3D","#0079C1","#6C207E","#E31B23","#F8971D","#FFD200","#59BD81","#59A7D7","#9F6FAA",
                    "#ED6B70","#FABB6B","#FFE159","#B3E0C5","#B3D6ED","#D3BCD8","#F39B9D","#FDE0BB","#FFF1B3",
                    "#7F7F7F","#D9D9D9","#F2F2F2","#4F4E50","#868686")
-
-# Global Functions
-get_min = function(measure) {
-  return(min(measure,na.rm = TRUE))
-}
-
-get_max = function(measure) {
-  return(max(measure,na.rm = TRUE))
-}

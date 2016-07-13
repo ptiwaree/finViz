@@ -1,9 +1,12 @@
+# This is the server script for Equity Portal that does all the backend calculation and dynamic 
+# UI Widgets generation. It also calls global.R script to automatically load variables and do other calls
+
 #library(datasets)
 
-options(scipen = 999)
+#options(scipen = 999)
 ##############################################Functions########################################
 # - Filter functions
-
+# Used for filtering categorical variables
 categorical_filter = function(data, indicator, user_input) {
   if (length(user_input) > 0) {
     return(subset(data,indicator %in% user_input))
@@ -11,7 +14,7 @@ categorical_filter = function(data, indicator, user_input) {
     return(data)
   }
 }
-
+# Used for returning values greater than a min chosen from user input
 set_min_filter = function(data, indicator, user_input) {
   if (length(user_input) > 0) {
     return(data[indicator >= user_input,])
@@ -19,7 +22,7 @@ set_min_filter = function(data, indicator, user_input) {
     return(data)
   }
 }
-
+# Used for returning values less than a max chosen from user input
 set_max_filter = function(data, indicator, user_input) {
   if (length(user_input) > 0) {
     return(data[indicator <= user_input,])
@@ -32,16 +35,6 @@ set_max_filter = function(data, indicator, user_input) {
 med_abs_dev = function(data, no_of_mads=3) {
   return(abs(data - median(data,na.rm=TRUE)) < no_of_mads*mad(data,na.rm=TRUE))
 }
-
-# rounds numerical columns in a dataframe
-round_df <- function(df, digits) {
-  nums <- vapply(df, is.numeric, FUN.VALUE = logical(1))
-  df[,nums] <- round(df[,nums], digits = digits)
-  return(df)
-}
-
-# Round the data to 3 decimal places
-DATA = round_df(DATA,3)
 
 # Shiny Server Function
 #=================================================================
@@ -56,7 +49,7 @@ shinyServer(function(input, output) {
               choices=dropdown, selected=dropdown[1],multiple=TRUE)
   })
 
-  # Categorical/Indicator Variables Selector UI exclude INDEX since we create one already
+  # Categorical/Indicator Variables Selector UI. Exclude INDEX since we create one already
   lapply(IndicatorDropDown[-3], function(x){
     #Example x = "BLOOMBERG TICKER"
     #Use headers to translate to original headers
@@ -75,6 +68,7 @@ shinyServer(function(input, output) {
   })
 
 ################Plot Widgets##############################
+  # Histogram Plot Widgets
   output$hist_vars_selector <- renderUI({  
     selectizeInput("HistVars",label="Variables",choices=NumericalDropDown, selected=NumericalDropDown[1], multiple=TRUE, options = list(placeholder = 'Choose variables to plot'))
   })
@@ -114,6 +108,7 @@ shinyServer(function(input, output) {
     }) #end of lapply
   }) #end of histPlots reactive
   
+  # Box Plot Widgets
   output$boxes <- renderUI({
     progress <- shiny::Progress$new()
     on.exit(progress$close())
@@ -128,6 +123,29 @@ shinyServer(function(input, output) {
     do.call(tagList, plot_output_list)
   })
   
+  boxPlots <- reactive({
+    progress <- shiny::Progress$new()
+    on.exit(progress$close())
+    progress$set(message = "Making box plots", value = 0)
+    
+    lapply(1:length(input$HistVars), function(i) {
+      progress$inc(i/length(input$HistVars))
+      plotname <- paste("box", i, sep="")
+      output[[plotname]] <- renderPlotly({
+        x = input$HistVars[i] #x = "P/E (FY0)"
+        y = headers$V1[[which(headers$V2 == x)]] #Example y = "pe_fy0"
+        color_index = ifelse(i%%length(colors)==0,length(colors),i%%length(colors))
+        # only plot data that is within 3 median absolute deviation
+        no_outlier_data = subset(outputdata(), med_abs_dev(outputdata()[[y]], input$MAD))
+        data_to_plot = no_outlier_data[[y]]
+        #sector = no_outlier_data[["sector"]]
+        ggplotly(ggplot(data=no_outlier_data, aes(1,data_to_plot)) + geom_boxplot(colour=colors[color_index]) + theme(panel.background = element_rect(fill = 'white')) + ylab(x) + coord_cartesian(ylim = c(get_min(data_to_plot),get_max(data_to_plot))))
+      })
+    }) #end of lapply
+  }) #end of boxPlots reactive
+  
+  
+  # Density Plot Widgets
   output$densities <- renderUI({
     progress <- shiny::Progress$new()
     on.exit(progress$close())
@@ -166,27 +184,7 @@ shinyServer(function(input, output) {
     }) #end of lapply
   }) #end of densityPlots reactive
 
-  boxPlots <- reactive({
-    progress <- shiny::Progress$new()
-    on.exit(progress$close())
-    progress$set(message = "Making box plots", value = 0)
-    
-    lapply(1:length(input$HistVars), function(i) {
-      progress$inc(i/length(input$HistVars))
-      plotname <- paste("box", i, sep="")
-      output[[plotname]] <- renderPlotly({
-        x = input$HistVars[i] #x = "P/E (FY0)"
-        y = headers$V1[[which(headers$V2 == x)]] #Example y = "pe_fy0"
-        color_index = ifelse(i%%length(colors)==0,length(colors),i%%length(colors))
-        # only plot data that is within 3 median absolute deviation
-        no_outlier_data = subset(outputdata(), med_abs_dev(outputdata()[[y]], input$MAD))
-        data_to_plot = no_outlier_data[[y]]
-        #sector = no_outlier_data[["sector"]]
-        ggplotly(ggplot(data=no_outlier_data, aes(1,data_to_plot)) + geom_boxplot(colour=colors[color_index]) + theme(panel.background = element_rect(fill = 'white')) + ylab(x) + coord_cartesian(ylim = c(get_min(data_to_plot),get_max(data_to_plot))))
-      })
-    }) #end of lapply
-  }) #end of boxPlots reactive
-  
+  # Bar Chart Widget
   output$bar_vars_selector <- renderUI({  
     selectizeInput("BarVars",label="Variables", choices=c("MARKET","CURRENCY","COUNTRY","SECTOR","SUBSECTOR","INDUSTRY","SUBINDUSTRY"), selected="SECTOR", multiple=TRUE, options = list(placeholder = 'Choose variables to plot'))
   })
@@ -252,8 +250,10 @@ shinyServer(function(input, output) {
       #indicator = select(filtered_data, one_of(c(y))) #new dataframe from filtered_data containing only column y
       #indicator = indicator[1:nrow(indicator),] #get all the values, now its in the same for as DATA$BT
       indicator = filtered_data[[y]]
-      user_input = input[[paste0(y, "_min")]]
-      filtered_data = set_min_filter(filtered_data, indicator, user_input)
+      lower_bound = input[[paste0(y, "_min")]]
+      #upper_bound = input[[paste0(y, "_max")]]
+      filtered_data = set_min_filter(filtered_data, indicator, lower_bound)
+      #filtered_data = set_max_filter(filtered_data, indicator, upper_bound)
     }
     
     # - Apply Maximum filter
@@ -268,9 +268,11 @@ shinyServer(function(input, output) {
       filtered_data = set_max_filter(filtered_data, indicator, user_input)
     }
     
+    
     return(filtered_data)
   })
   
+  # Takes outputdata and does formatting and adds friendly headers for outputting purpose
   outputTableData <- reactive({
     progress <- shiny::Progress$new()
     on.exit(progress$close())
@@ -280,12 +282,15 @@ shinyServer(function(input, output) {
     #translate user chosen output vars into original headers to show in table
     output_table_vars = filter(headers,headers$V2 %in% input$OutputTableVars)[[1]]
     temp = format(subset(temp,select=c(output_table_vars)),scientific=F)
+    #output_sort_var = headers$V1[headers$V2 == input$OutputTableVarsSort]
+    #temp = temp %>% arrange(output_sort_var)
     # output table should have friendly headers so switch to those
     names(temp) = lapply(names(temp), function(x)(return(headers2[[x]])))
     temp = round_df(temp,3)
     return(unique(temp))
   })
-
+  
+  # Scatter Plots
   scatterPlot <- reactive({
     x1 = input$ScatterVarsX
     x2 = input$ScatterVarsY
@@ -301,20 +306,6 @@ shinyServer(function(input, output) {
     return(ggplotly(p1))
   })
 
-  summaryStats <-  reactive({
-    progress <- shiny::Progress$new()
-    on.exit(progress$close())
-    progress$set(message = "Creating output table", value = 0)
-    
-    summaryStat = stat.desc(outputdata())
-    numerical_vars_headers = filter(headers,headers$V2 %in% intersect(input$OutputTableVars, NumericalDropDown))[[1]]
-    summaryStat = subset(summaryStat ,select=c(numerical_vars_headers))
-    # output table should have friendly headers so switch to those
-    names(summaryStat) = lapply(names(summaryStat), function(x)(return(headers2[[x]])))
-    summaryStat = format(summaryStat,big.mark=",", trim=TRUE, scientific=FALSE)
-    summaryStat = round_df(summaryStat,3)
-    return(summaryStat)
-  })
   
   # - Peer Analyzer - Make a time series data
   peer_analyzer_output_data = reactive({
@@ -326,9 +317,8 @@ shinyServer(function(input, output) {
   })
   
 
-  # - Output data to table ,class = 'cell-border stripe'
+  # - Output data and plots that UI.R consumes
   output$table <- DT::renderDataTable(round_df(outputTableData(),3),  class = 'cell-border stripe')
-  output$summary <- DT::renderDataTable(round_df(summaryStats(),3),  class = 'cell-border stripe')
   output$scatter <- renderPlotly(scatterPlot())
   
   output$pa_dygraph <- renderDygraph({

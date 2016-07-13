@@ -1,11 +1,15 @@
+# This is a UI script for the Equity Portal App. In this script, we build widgets used in the
+# User Interface of the App
+
 library(shiny)
 library(plotly)
 library(dygraphs)
 
 
 shinyUI(navbarPage("Applications:", id="eqapps", 
-  tabPanel("Equity Screener",
+  tabPanel("Equity Screener", #Equity Screener App
   sidebarLayout(
+    # Sidebar Panel
     sidebarPanel(
       h3("Screening Criteria"),
       selectInput("Indicator",label="Categorical Variables",
@@ -13,7 +17,7 @@ shinyUI(navbarPage("Applications:", id="eqapps",
       selectInput("Numerical",label="Numerical Variables",
                   choices=NumericalDropDown, selected=NumericalDropDown[1],multiple=TRUE, selectize=FALSE),
       
-      # Index Options 
+      # - Widget for Choosing Index 
       conditionalPanel(
         condition = 'input.Indicator.indexOf("INDEX") !== -1', #Javascript expression
         uiOutput("portfolio_nameSelector")
@@ -53,26 +57,24 @@ shinyUI(navbarPage("Applications:", id="eqapps",
             )
           ))
       })
-      ),
-    
+      ), #end of Sidebar Panel
+    # Main Panel
     mainPanel(
       tabsetPanel(
-          tabPanel("Tables", 
+          tabPanel("Tables", #Table Tab
                    fluidRow(
-                     column(12, radioButtons("tables", "", choices=c("Raw Data", "Summary"), selected = "Raw Data", inline = TRUE, width = '100%')),
+                     column(12, radioButtons("tables", "", choices=c("Raw Data"), selected = "Raw Data", inline = TRUE, width = '100%')),
                      conditionalPanel(
                        condition = 'input.tables.indexOf("Raw Data") !== -1 || input.tables.indexOf("Summary") !== -1',
                        column(12, # - Table Variables To Output
-                              selectizeInput("OutputTableVars",label="",
-                                             choices=c(IndicatorDropDown,NumericalDropDown), multiple=TRUE, options = list(placeholder = 'Choose variables to output in the table'), selected=c("BLOOMBERG TICKER","SEDOL","SECURITY NAME","P/E (FY0)")))
+                              selectizeInput("OutputTableVars",label="Add Columns",
+                                             choices=c(IndicatorDropDown,NumericalDropDown), multiple=TRUE, options = list(placeholder = 'Choose variables to output in the table'), selected=c("BLOOMBERG TICKER","SEDOL","SECURITY NAME", "CURRENCY", "P/E (FY0)"))),
+                              selectizeInput("OutputTableVarsSort",label="Sort by",
+                                            choices=c(IndicatorDropDown,NumericalDropDown), multiple=FALSE, selected=c("P/E (FY0)"))
                        ),
                      conditionalPanel(
                        condition = 'input.tables.indexOf("Raw Data") !== -1',
                         column(12, DT::dataTableOutput('table'))
-                     ),
-                     conditionalPanel(
-                       condition = 'input.tables.indexOf("Summary") !== -1',
-                       column(12, DT::dataTableOutput('summary'))
                      )
                      )),
           tabPanel("Charts", 
@@ -115,7 +117,7 @@ shinyUI(navbarPage("Applications:", id="eqapps",
         )) #end of main panel and tab panel
   ) #end of sidebarLayout
 ), #end of Equity Screener tabPanel
-tabPanel("Peer Analyzer",
+tabPanel("Peer Analyzer", #Peer Analyzer App
      sidebarLayout(
        sidebarPanel(
         selectizeInput("pa_ticker",label="TICKERS",
